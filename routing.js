@@ -68,10 +68,16 @@ function setupRoutes(app) {
              This is an indication that something has gone wrong and we handle it.
              */
             if (err) {
-                //HINT: in order for the tests to pass we should handle the error and send a custom response.
+                if(err == 'Item with the same id already exists') {
+                    res.status(400).send({
+                        Error: err
+                    });
+                }
+                else {
                 next(err); //HINT: this is the default handling. It is routed to return a status code of 500.
+                }
             } else {
-                res.status(200).send({
+                res.status(201).send({
                     Result: createdItem
                 });
             }
@@ -92,7 +98,17 @@ function setupRoutes(app) {
             }
          with a status code of 404.
          */
-        next('routing.js: "Update by id" route handler not implemented');
+        db.updateById(id, item, function(err, data){
+            if(err){
+                res.status(404).send({
+                    Error: 'Item not found'
+                });
+            } else {
+                res.status(200).send({
+                    Result: data
+                });
+            }
+        });
     });
 
     app.delete('/db', function (req, res, next) {
@@ -102,24 +118,34 @@ function setupRoutes(app) {
                 Result: (Number: count of the items)
              }
          */
-        next('routing.js: "Delete all items" route handler not implemented');
+        db.deleteAll(function(err, count){
+            if(err) {
+                res.status(500).send({
+                    Error: err
+                });
+            } else {
+                res.status(200).send({
+                    Result: count
+                });
+            }
+        });
 
     });
 
     app.delete('/db/:id', function (req, res, next) {
         var id = req.params.id;
-        /*
-         Delete single item from the database by id. Response should contain the item that was deleted like so:
-             {
-                Result: (Object: item that was deleted)
-             }
-         If the item doest not exist then an error must be returned to the user.
-             {
-                Error: 'Item not found'
-             }
-         with a status code of 404.
-         */
-        next('routing.js: "Delete item by id" route handler not implemented');
+        db.deleteById(id, function(err, deletedItem) {
+            if(err) {
+                res.status(404).send({
+                    Error: err
+                });
+            } else {
+                res.status(200).send({
+                    Result: deletedItem
+                });
+            }
+        });
+        //next('routing.js: "Delete item by id" route handler not implemented');
     });
 };
 

@@ -36,7 +36,7 @@ Db.prototype.addItem = function(item, done){
         }
         item.id = item.id || uuid.v1(); //use the id supplied by the user or generate a new one.
         if(findById(item.id, data)) {
-            return done('Invalid item id. If you supply an id for the item it must be unique.');
+            return done('Item with the same id already exists');
         }
         data.push(item);
         self.writeItems(data, function(err) {
@@ -83,8 +83,31 @@ Db.prototype.getById = function(id, done) {
  * @param done
  */
 Db.prototype.updateById = function(id, item, done){
-    //See Db.prototype.getById
-    done('Method updateById in Db.js not implemented');
+    var self = this;
+    self.readItems(function(readError, items){
+        if(readError){
+            return done(readError);
+        }
+        var dbPosition = -1;
+        for(var i = 0, len = items.length; i < len; i++) {
+            if(items[i].id === id) {
+                dbPosition = i;
+                break;
+            }
+        }
+        if(dbPosition === -1){
+            return done('Item does not exist');
+        }
+        Object.keys(item).forEach(function(key){
+            items[dbPosition][key] = item[key];
+        });
+        self.writeItems(items, function(writeError, postWrite){
+            if(writeError){
+                return done(writeError);
+            }
+            done(null, items[dbPosition]);
+        });
+    });
 };
 
 /**
@@ -92,16 +115,46 @@ Db.prototype.updateById = function(id, item, done){
  * @param id
  * @param done
  */
-Db.prototype.deleteById = function(id, done){
-    done('Method deleteById in Db.js not implemented');
+Db.prototype.deleteById = function(id, callback){
+    var self = this;
+    self.readItems(function(readErr, items){
+        if(readErr) {
+            callback(readErr);
+        } else {
+            var updatedList = items.filter(function(entry){ return entry.id !== id });
+            var deletedItem = items.filter(function(entry){ return entry.id === id });
+            deletedItem = deletedItem[0];
+            if(deletedItem) {
+                self.writeItems(updatedList, function(writeErr, postWrite){
+                    if(writeErr) {
+                        callback(writeErr);
+                    } else {
+                        callback(null, deletedItem);
+                    }
+                });
+            }
+            else {
+                callback('Item not found');
+            }
+        }
+    });
 };
 
 /**
  * Deletes all items in the database. Callbacks with the count of the items that were deleted.
  * @param done - done(err, count)
  */
-Db.prototype.deleteAll = function(done){
-    done('Method deleteAll in Db.js not implemented');
+Db.prototype.deleteAll = function(callback){
+    var self = this;
+    self.readItems(function(readErr, items){
+        if(readErr) {
+            callback(readErr);
+        } else {
+            self.clear(function(_) {
+                callback(null, items.length);
+            });
+        }
+    });
 };
 
 /**
